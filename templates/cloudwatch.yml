@@ -1,0 +1,82 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudWatch alarm for EC2 CPU + EventBridge schedule + SNS email notifications
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: lumera-demo
+  Environment:
+    Type: String
+    Default: dev
+
+  # We import the InstanceId from the EC2 stack Export
+  LambdaArn:
+    Type: String
+
+  SnsEmail:
+    Type: String
+    Description: Email address to subscribe to the alarm topic
+
+  CpuThreshold:
+    Type: Number
+    Default: 70
+
+  PeriodSeconds:
+    Type: Number
+    Default: 300
+    Description: 300 for basic monitoring; set 60 if EC2 Detailed Monitoring is enabled
+
+Resources:
+  AlarmTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub ${ProjectName}-${Environment}-cpu-alarms
+
+  AlarmSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref AlarmTopic
+      Protocol: email
+      Endpoint: !Ref SnsEmail
+
+  HighCPUAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${ProjectName}-${Environment}-high-cpu
+      ComparisonOperator: GreaterThanThreshold
+      EvaluationPeriods: 1
+      MetricName: CPUUtilization
+      Namespace: AWS/EC2
+      Period: !Ref PeriodSeconds
+      Statistic: Average
+      Threshold: !Ref CpuThreshold
+      AlarmDescription: !Sub "Alert if average CPU > ${CpuThreshold}% for ${PeriodSeconds}s"
+      Dimensions:
+        - Name: InstanceId
+          Value:
+            Fn::ImportValue: !Sub "${ProjectName}-${Environment}-InstanceId"
+      TreatMissingData: notBreaching
+      AlarmActions: [ !Ref AlarmTopic ]
+      OKActions: [ !Ref AlarmTopic ]
+
+  ScheduleRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: Trigger Lambda every 5 minutes
+      ScheduleExpression: rate(5 minutes)
+      State: ENABLED
+      Targets:
+        - Arn: !Ref LambdaArn
+          Id: Ec2LoggerTarget
+
+  LambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref LambdaArn
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt ScheduleRule.Arn
+
+Outputs:
+  AlarmTopicArn:
+    Value: !Ref AlarmTopic

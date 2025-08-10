@@ -1,0 +1,80 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Private EC2 app instance (SSM-only access) + egress-only SG
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: lumera-demo
+  Environment:
+    Type: String
+    Default: dev
+  InstanceType:
+    Type: String
+    Default: t3.micro
+  PrivateSubnetId:
+    Type: String
+  VpcId:
+    Type: String
+  InstanceProfileName:
+    Type: String
+
+  # Pull the latest Amazon Linux 2023 AMI ID from SSM Parameter Store
+  LinuxAmiId:
+    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64
+
+  DetailedMonitoring:
+    Type: String
+    AllowedValues: ['true','false']
+    Default: 'false'
+    Description: Set to 'true' to enable 1-minute EC2 detailed monitoring (cost applies)
+
+Resources:
+  AppSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Egress-only SG for private EC2 instance
+      VpcId: !Ref VpcId
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-${Environment}-app-sg
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Env
+          Value: !Ref Environment
+
+  AppInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref LinuxAmiId
+      InstanceType: !Ref InstanceType
+      SubnetId: !Ref PrivateSubnetId
+      IamInstanceProfile: !Ref InstanceProfileName
+      SecurityGroupIds: [!Ref AppSG]
+      Monitoring: !Ref DetailedMonitoring
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-${Environment}-app
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Env
+          Value: !Ref Environment
+      UserData: !Base64 |
+        #!/bin/bash
+        set -eux
+        # AL2023 includes SSM Agent by default
+        systemctl enable --now amazon-ssm-agent || true
+
+Outputs:
+  AppInstanceId:
+    Description: EC2 instance ID for downstream consumers (alarms, dashboards)
+    Value: !Ref AppInstance
+    Export:
+      Name: !Sub "${ProjectName}-${Environment}-InstanceId"
+
+  AppSecurityGroupId:
+    Description: Security Group ID (for RDS allowlist)
+    Value: !Ref AppSG

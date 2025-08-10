@@ -1,0 +1,38 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Lambda function to log EC2 state to S3 (packaged zip in S3)
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: lumera-demo
+  Environment:
+    Type: String
+    Default: dev
+  LambdaRoleArn:
+    Type: String
+  ArtifactBucketName:
+    Type: String
+  LambdaZipKey:
+    Type: String
+
+Resources:
+  Ec2StatusLogger:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub ${ProjectName}-${Environment}-ec2-status-logger
+      Handler: ec2_status_logger.lambda_handler
+      Runtime: python3.12
+      Role: !Ref LambdaRoleArn
+      Code:
+        S3Bucket: !Ref ArtifactBucketName
+        S3Key: !Ref LambdaZipKey
+      Timeout: 30
+      Environment:
+        Variables:
+          LOG_BUCKET: !Ref ArtifactBucketName
+
+Outputs:
+  LambdaArn:
+    Value: !GetAtt Ec2StatusLogger.Arn
+    Export:
+      Name: !Sub ${ProjectName}-${Environment}-LambdaArn

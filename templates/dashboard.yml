@@ -1,0 +1,77 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudWatch Dashboard for EC2, RDS, and S3 metrics
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: lumera-demo
+  Environment:
+    Type: String
+    Default: dev
+  DBInstanceIdentifier:
+    Type: String
+    Description: RDS DB instance identifier (e.g., lumera-demo-dev-db)
+  BucketName:
+    Type: String
+    Description: S3 bucket name to monitor
+
+Resources:
+  ServiceDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub "${ProjectName}-${Environment}-service"
+      # Use !Sub with a variable map to inject ImportValue into the JSON body
+      DashboardBody: !Sub
+        - |
+          {
+            "widgets": [
+              {
+                "type": "metric",
+                "x": 0, "y": 0, "width": 12, "height": 6,
+                "properties": {
+                  "title": "EC2 CPUUtilization",
+                  "metrics": [
+                    [ "AWS/EC2", "CPUUtilization", "InstanceId", "${Ec2Id}" ]
+                  ],
+                  "stat": "Average",
+                  "region": "${AWS::Region}",
+                  "period": 300
+                }
+              },
+              {
+                "type": "metric",
+                "x": 12, "y": 0, "width": 12, "height": 6,
+                "properties": {
+                  "title": "RDS Connections & FreeableMemory",
+                  "metrics": [
+                    [ "AWS/RDS", "DatabaseConnections", "DBInstanceIdentifier", "${DBInstanceIdentifier}", { "stat": "Average" } ],
+                    [ ".", "FreeableMemory", ".", ".", { "stat": "Average" } ]
+                  ],
+                  "region": "${AWS::Region}",
+                  "period": 300
+                }
+              },
+              {
+                "type": "metric",
+                "x": 0, "y": 6, "width": 24, "height": 6,
+                "properties": {
+                  "title": "S3 Bucket Size (bytes) & Object Count (daily)",
+                  "metrics": [
+                    [ "AWS/S3", "BucketSizeBytes", "BucketName", "${BucketName}", "StorageType", "StandardStorage", { "stat": "Average" } ],
+                    [ ".", "NumberOfObjects", ".", ".", "StorageType", "AllStorageTypes", { "stat": "Average" } ]
+                  ],
+                  "region": "${AWS::Region}",
+                  "period": 86400,
+                  "stat": "Average",
+                  "view": "timeSeries"
+                }
+              }
+            ]
+          }
+        - {
+            Ec2Id: { "Fn::ImportValue": { "Fn::Sub": "${ProjectName}-${Environment}-InstanceId" } }
+          }
+
+Outputs:
+  DashboardName:
+    Value: !Sub "${ProjectName}-${Environment}-service"

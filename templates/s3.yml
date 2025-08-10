@@ -1,0 +1,33 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: S3 bucket for artifacts and logs (blocked public access, encrypted)
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: lumera-demo
+  Environment:
+    Type: String
+    Default: dev
+
+Resources:
+  ArtifactBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub ${ProjectName}-${Environment}-artifacts-${AWS::AccountId}
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+Outputs:
+  ArtifactBucketName:
+    Value: !Ref ArtifactBucket
+    Export:
+      Name: !Sub ${ProjectName}-${Environment}-ArtifactBucketName

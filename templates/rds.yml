@@ -1,0 +1,92 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: RDS MySQL in private subnets with SG allowing access from App SG
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: lumera-demo
+  Environment:
+    Type: String
+    Default: dev
+  VpcId:
+    Type: String
+  PrivateSubnetIds:
+    Type: CommaDelimitedList
+  AppSecurityGroupId:
+    Type: String
+  DBUsername:
+    Type: String
+    Default: appuser
+    NoEcho: true
+  DBPassword:
+    Type: String
+    NoEcho: true
+  DBInstanceClass:
+    Type: String
+    Default: db.t3.micro
+
+Resources:
+  RDSSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow MySQL from app SG
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          SourceSecurityGroupId: !Ref AppSecurityGroupId
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-${Environment}-rds-sg
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Env
+          Value: !Ref Environment
+
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Private subnets for RDS
+      SubnetIds: !Ref PrivateSubnetIds
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-${Environment}-db-subnets
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Env
+          Value: !Ref Environment
+
+  MyDB:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      Engine: mysql
+      EngineVersion: '8.0'
+      DBInstanceClass: !Ref DBInstanceClass
+      AllocatedStorage: 20
+      StorageEncrypted: true
+      MasterUsername: !Ref DBUsername
+      MasterUserPassword: !Ref DBPassword
+      VPCSecurityGroups: [!Ref RDSSG]
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      PubliclyAccessible: false
+      DeletionProtection: false
+      BackupRetentionPeriod: 1
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-${Environment}-db
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Env
+          Value: !Ref Environment
+
+Outputs:
+  RDSEndpoint:
+    Description: RDS endpoint address
+    Value: !GetAtt MyDB.Endpoint.Address
+
+  DBInstanceIdentifier:
+    Description: RDS DB instance identifier (for dashboards/monitoring)
+    Value: !Ref MyDB
+    Export:
+      Name: !Sub "${ProjectName}-${Environment}-DBInstanceIdentifier"

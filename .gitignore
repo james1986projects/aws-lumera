@@ -1,0 +1,28 @@
+@'
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Python / Lambda zips
+__pycache__/
+*.pyc
+lambda/*.zip
+
+# PowerShell history
+*.pshistory
+
+# Local env and secrets
+.env
+*.secrets
+*.local
+
+# AWS SAM/packaging temp (if ever used)
+.aws-sam/
+.packaged/
+
+# Logs
+logs/
+*.log
+'@ | Set-Content .gitignore -NoNewline
