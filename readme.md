@@ -31,38 +31,10 @@ I designed and implemented this project to demonstrate the core AWS services, au
 
 ---
 
-## Architecture
 
-flowchart LR
-  subgraph VPC["VPC (10.0.0.0/16)"]
-    direction TB
-    subgraph PrivateAZA["Private Subnet A"]
-      EC2[EC2 Instance (no public IP)]
-    end
-    subgraph PrivateAZB["Private Subnet B"]
-      RDS[(RDS MySQL)]
-    end
-    VPCE1[SSM Interface Endpoint]
-    VPCE2[S3 Gateway Endpoint]
-  end
+## File Structure
 
-  CW[CloudWatch] -->|CPU Alarm| SNS[(SNS Topic)]
-  SNS --> Email[Email Subscription]
-
-  Lambda[Lambda (Scheduled)] -->|Logs EC2 State| S3[(Private S3 Bucket)]
-  EC2 -. SSM Session Manager .-> VPCE1
-  S3 -. Private access via endpoint .- VPCE2
-
-  %% Styles
-  classDef vpce fill:#eef,stroke:#88f
-  classDef svc fill:#efe,stroke:#5b5
-
-  class VPCE1,VPCE2 vpce
-  class CW,Lambda svc
-
-
-**File Structure**
-
+```
 aws-lumera/
 ├── README.md                  # This document
 ├── scripts/
@@ -80,6 +52,7 @@ aws-lumera/
 │   ├── sns.yml                 # SNS topic & email subscription for alarms
 ├── lambda/
 │   └── ec2_status_logger.py    # Lambda function for EC2 state logging
+```
 
 ---
 
@@ -135,18 +108,20 @@ Full lifecycle workflow supported: deploy → operate → teardown.
 
 This project delivers a secure, private-only AWS environment with full lifecycle automation, observability, and cost-conscious design. It shows the ability to combine networking, compute, database, serverless, and monitoring into a cohesive, production-ready stack
 
-**Screenshots**
-Deploy
-![Deploy Success](./docs/deploy_success.PNG)
+## Screenshots
 
-Dashboard
-![CloudWatch Dashboard](./docs/dashboard.PNG)
+- **Deployment success** (`deploy.ps1` output)  
+  ![Deploy Success](./docs/deploy_success.PNG)
 
-SSM Terminal
-![SSM Connect PowerShell](./docs/ssm_connect_PS.PNG)
+- **CloudWatch dashboard** (EC2 CPU, RDS metrics)  
+  ![CloudWatch Dashboard](./docs/dashboard.PNG)
 
-SSM AWS Console
-![SSM Connect AWS Console](./docs/ssm_connect_AWS.PNG)
+- **SSM Session Manager** (PowerShell)  
+  ![SSM Connect PowerShell](./docs/ssm_connect_PS.PNG)
 
-Email Alarm
-![SNS Alarm Confirmation](./docs/SNS_alarm_confirmation.PNG)
+- **SSM Session Manager** (AWS Console)  
+  ![SSM Connect AWS Console](./docs/ssm_connect_AWS.PNG)
+
+- **SNS alarm email confirmation** (from CPU alarm trigger)  
+  ![SNS Alarm Confirmation](./docs/SNS_alarm_confirmation.PNG)
+
