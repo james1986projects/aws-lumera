@@ -125,3 +125,24 @@ This project delivers a secure, private-only AWS environment with full lifecycle
 - **SNS alarm email confirmation** (from CPU alarm trigger)  
   ![SNS Alarm Confirmation](./docs/SNS_alarm_confirmation.PNG)
 
+
+## Future improvements
+
+- **Evolve into 3 tiers**
+
+Currently, the public subnets are placeholders and the seond tier hosts EC2 and RDS.
+To improve this, I'd deploy an ALB to tier 1 across 2 AZ's in public subnets, EC2 in the 2nd tier with an ASG across 2 AZ's in private subnets, and a multi-AZ RDS in private subnets as tier 3.
+
+- **Security hardening**
+
+Move secrets to Secrets Manager, restrict egress SG's to required ports only.
+
+- **Observability**
+
+More alarms and Cloudwatch agent for memory and disk of EC2
+Add these into the dashboard
+
+- **Cost**
+
+Add S3 lifecycle policies for transition to glacier
+Monitor EC2 for right sizing  
